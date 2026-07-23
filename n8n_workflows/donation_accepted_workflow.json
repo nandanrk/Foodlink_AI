@@ -1,0 +1,53 @@
+{
+  "name": "FoodLink AI - 2. Donation Accepted Alert (To Volunteers)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "donation-accepted",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "webhook-accepted-node",
+      "name": "Webhook (Donation Accepted)"
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@foodlinkai.com",
+        "toEmail": "={{ $json.body.assigned_volunteer ? $json.body.assigned_volunteer.email : ($json.body.volunteers.length ? $json.body.volunteers[0].email : 'volunteer@foodlinkai.com') }}",
+        "subject": "=🚚 Food Delivery Assignment Alert: {{ $json.body.donation.food_name }}",
+        "html": "=<h2>Food Delivery Alert 🚚</h2><p>Hello {{ $json.body.assigned_volunteer ? $json.body.assigned_volunteer.name : 'Volunteer Delivery Partner' }},</p><p>A food donation has been accepted by an NGO and requires delivery!</p><h3>📍 Pickup Location (Donor Restaurant):</h3><ul><li><strong>Restaurant Name:</strong> {{ $json.body.restaurant.name }}</li><li><strong>Address:</strong> {{ $json.body.restaurant.address }}</li><li><strong>Phone:</strong> {{ $json.body.restaurant.phone }}</li></ul><h3>🏢 Delivery Destination (NGO):</h3><ul><li><strong>NGO Name:</strong> {{ $json.body.ngo.name }}</li><li><strong>Address:</strong> {{ $json.body.ngo.address }}</li><li><strong>Phone:</strong> {{ $json.body.ngo.phone }}</li></ul><h3>📦 Donation Summary:</h3><ul><li><strong>Food Item:</strong> {{ $json.body.donation.food_name }}</li><li><strong>Servings:</strong> {{ $json.body.donation.servings }}</li><li><strong>Pickup OTP:</strong> <strong>{{ $json.body.pickup_otp || 'N/A' }}</strong></li></ul><p>Please coordinate the pickup and delivery promptly. Thank you for making a difference!</p><br/><p><i>FoodLink AI Automation Team</i></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        300,
+        0
+      ],
+      "id": "send-email-volunteer-node",
+      "name": "Send Email to Volunteer Partner"
+    }
+  ],
+  "connections": {
+    "Webhook (Donation Accepted)": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Volunteer Partner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

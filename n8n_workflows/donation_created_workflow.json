@@ -1,0 +1,53 @@
+{
+  "name": "FoodLink AI - 1. Donation Created Alert (To NGOs)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "donation-created",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "webhook-node",
+      "name": "Webhook (Donation Created)"
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@foodlinkai.com",
+        "toEmail": "={{ $json.body.ngos && $json.body.ngos.length ? $json.body.ngos.map(n => n.email).filter(Boolean).join(',') : 'ngo@foodlinkai.com' }}",
+        "subject": "=🍽️ New Food Donation Alert: {{ $json.body.donation.food_name }}",
+        "html": "=<h2>New Food Donation Alert 🍽️</h2><p>A new food donation has just been listed on <strong>FoodLink AI</strong>!</p><ul><li><strong>Food Item:</strong> {{ $json.body.donation.food_name }}</li><li><strong>Servings:</strong> {{ $json.body.donation.servings }}</li><li><strong>Quantity:</strong> {{ $json.body.donation.quantity }}</li><li><strong>Food Type:</strong> {{ $json.body.donation.food_type }}</li><li><strong>Donor Restaurant:</strong> {{ $json.body.restaurant.name }}</li><li><strong>Pickup Address:</strong> {{ $json.body.donation.pickup_address }}</li></ul><p>Please log in to your FoodLink AI dashboard to accept this donation before it expires.</p><br/><p><i>FoodLink AI Automation Team</i></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        300,
+        0
+      ],
+      "id": "send-email-ngo-node",
+      "name": "Send Email to NGO"
+    }
+  ],
+  "connections": {
+    "Webhook (Donation Created)": {
+      "main": [
+        [
+          {
+            "node": "Send Email to NGO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

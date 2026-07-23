@@ -88,6 +88,10 @@ async function processDonation(donationId) {
       .update({ notified_ngo_id: nearestNGO.id, status: 'pending' })
       .eq('id', donationId);
 
+    // Trigger n8n Webhook for NGO email alerts
+    const n8nService = require('../services/n8n.service');
+    await n8nService.triggerDonationCreatedWebhook(donation, donation.restaurants);
+
     console.log(`✅ Donation ${donationId} processed successfully`);
   } catch (err) {
     console.error('Automation engine error:', err);
@@ -174,6 +178,22 @@ async function assignVolunteer(donationId, ngoId) {
       title: 'Volunteer Assigned 🚚',
       message: `${volunteer.name} has been assigned to pick up "${donation.food_name}" and deliver it to you.`
     });
+
+    // Trigger n8n Webhook for Volunteer Email Alert
+    try {
+      const { data: ngo } = await supabaseAdmin.from('ngos').select('*').eq('id', ngoId).single();
+      const { data: restaurant } = await supabaseAdmin.from('restaurants').select('*').eq('id', donation.restaurant_id).single();
+      const n8nService = require('../services/n8n.service');
+      await n8nService.triggerDonationAcceptedWebhook({
+        donation,
+        ngo,
+        restaurant,
+        volunteer,
+        pickupOtp
+      });
+    } catch (n8nErr) {
+      console.error('n8n accepted webhook error:', n8nErr);
+    }
 
     return { assignment, volunteer, pickupOtp };
   } catch (err) {
