@@ -134,12 +134,12 @@ async function sendDonationCreatedAlert(donation, restaurant) {
       </div>
     `;
 
-    // Send individual emails to each registered NGO to ensure reliable delivery
+    // Send individual emails to each registered NGO with unique subject line (prevents Gmail thread collapsing)
     await Promise.allSettled(
       ngoEmails.map(email =>
         sendEmail({
           to: email,
-          subject: `🍽️ New Food Donation Alert: ${donation.food_name}`,
+          subject: `🚨 [FoodAlert] ${donation.food_name} (${donation.servings} Servings) - ${restaurant?.name || 'Restaurant'}`,
           html: htmlContent
         })
       )
