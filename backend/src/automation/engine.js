@@ -87,10 +87,14 @@ async function processDonation(donationId) {
     const emailService = require('../services/email.service');
     await emailService.sendDonationCreatedAlert(donation, donation.restaurants);
 
-    // Also trigger n8n Webhook if configured
+    // Also trigger n8n Webhook if configured (safeguarded so n8n errors never block emails)
     if (process.env.N8N_DONATION_CREATED_WEBHOOK_URL) {
-      const n8nService = require('../services/n8n.service');
-      await n8nService.triggerDonationCreatedWebhook(donation, donation.restaurants);
+      try {
+        const n8nService = require('../services/n8n.service');
+        await n8nService.triggerDonationCreatedWebhook(donation, donation.restaurants);
+      } catch (n8nErr) {
+        console.warn('⚠️ n8n webhook trigger skipped:', n8nErr.message);
+      }
     }
 
     console.log(`✅ Donation ${donationId} processed successfully`);
