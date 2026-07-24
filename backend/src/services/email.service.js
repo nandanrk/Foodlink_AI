@@ -134,11 +134,16 @@ async function sendDonationCreatedAlert(donation, restaurant) {
       </div>
     `;
 
-    await sendEmail({
-      to: ngoEmails,
-      subject: `🍽️ New Food Donation Alert: ${donation.food_name}`,
-      html: htmlContent
-    });
+    // Send individual emails to each registered NGO to ensure reliable delivery
+    await Promise.allSettled(
+      ngoEmails.map(email =>
+        sendEmail({
+          to: email,
+          subject: `🍽️ New Food Donation Alert: ${donation.food_name}`,
+          html: htmlContent
+        })
+      )
+    );
   } catch (err) {
     console.error('❌ Failed to send Donation Created Email:', err.message);
   }
@@ -198,11 +203,16 @@ async function sendDonationAcceptedAlert({ donation, ngo, restaurant, volunteer,
       </div>
     `;
 
-    await sendEmail({
-      to: recipientEmails,
-      subject: `🚚 Food Delivery Assignment: ${donation.food_name}`,
-      html: htmlContent
-    });
+    // Send individual emails to each volunteer recipient
+    await Promise.allSettled(
+      recipientEmails.map(email =>
+        sendEmail({
+          to: email,
+          subject: `🚚 Food Delivery Assignment: ${donation.food_name}`,
+          html: htmlContent
+        })
+      )
+    );
   } catch (err) {
     console.error('❌ Failed to send Volunteer Delivery Email:', err.message);
   }
