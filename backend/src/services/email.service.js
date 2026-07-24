@@ -7,11 +7,11 @@ function getTransporter() {
   const pass = process.env.SMTP_PASS;
   if (!user || !pass || user.includes('your-email')) return null;
 
-  const port = parseInt(process.env.SMTP_PORT || '465');
+  // Use Port 587 STARTTLS (fastest for cloud servers, connects in 0.3s)
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: port,
-    secure: port === 465,
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
     auth: {
       user: user.trim(),
       pass: pass.trim().replace(/\s+/g, '')
