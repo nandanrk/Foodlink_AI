@@ -8,8 +8,8 @@ const MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:
  * Call OpenRouter AI API
  */
 async function callAI(messages, maxTokens = 500) {
-  if (!OPENROUTER_API_KEY) {
-    return 'AI service not configured. Please set OPENROUTER_API_KEY.';
+  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.includes('placeholder') || OPENROUTER_API_KEY.includes('your_')) {
+    return 'AI service not configured.';
   }
   try {
     const response = await axios.post(
@@ -27,7 +27,7 @@ async function callAI(messages, maxTokens = 500) {
           'HTTP-Referer': 'https://foodlinkai.com',
           'X-Title': 'FoodLink AI'
         },
-        timeout: 30000
+        timeout: 3000
       }
     );
     return response.data.choices[0]?.message?.content || 'No response generated.';
