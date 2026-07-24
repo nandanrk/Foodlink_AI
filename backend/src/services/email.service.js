@@ -7,13 +7,17 @@ function getTransporter() {
   const pass = process.env.SMTP_PASS;
   if (!user || !pass || user.includes('your-email')) return null;
 
+  const port = parseInt(process.env.SMTP_PORT || '465');
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: true,
+    port: port,
+    secure: port === 465,
     auth: {
       user: user.trim(),
       pass: pass.trim().replace(/\s+/g, '')
+    },
+    tls: {
+      rejectUnauthorized: false
     }
   });
 }
