@@ -1,9 +1,66 @@
+const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
 const { supabaseAdmin } = require('../config/supabase');
 
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const FROM_EMAIL = process.env.EMAIL_FROM || 'FoodLink AI <onboarding@resend.dev>';
+function getTransporter() {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass || user.includes('your-email')) return null;
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true,
+    auth: {
+      user: user.trim(),
+      pass: pass.trim().replace(/\s+/g, '')
+    }
+  });
+}
+
+/**
+ * Send Email helper function
+ */
+async function sendEmail({ to, subject, html }) {
+  const smtpTransporter = getTransporter();
+  const smtpUser = process.env.SMTP_USER;
+  const fromEmail = smtpUser ? `FoodLink AI <${smtpUser.trim()}>` : (process.env.EMAIL_FROM || 'FoodLink AI <onboarding@resend.dev>');
+
+  // Option 1: Use Nodemailer SMTP (Sends to ANY email address)
+  if (smtpTransporter) {
+    const recipients = Array.isArray(to) ? to.join(', ') : to;
+    console.log(`📧 Sending Nodemailer SMTP email via (${smtpUser}) to: ${recipients}`);
+    const info = await smtpTransporter.sendMail({
+      from: fromEmail,
+      to: recipients,
+      subject,
+      html
+    });
+    console.log('✅ Nodemailer Email Sent Successfully! MessageId:', info.messageId);
+    return info;
+  }
+
+  // Option 2: Resend API Fallback
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey) {
+    const resend = new Resend(resendApiKey);
+    console.log(`📧 Sending Resend API email to: ${Array.isArray(to) ? to.join(', ') : to}`);
+    const data = await resend.emails.send({
+      from: fromEmail,
+      to,
+      subject,
+      html
+    });
+    if (data.error) {
+      console.error('❌ Resend API Error:', data.error);
+    } else {
+      console.log('✅ Resend Email Sent Successfully. ID:', data.id);
+    }
+    return data;
+  }
+
+  console.log(`ℹ️ [Email Simulation] Neither SMTP_USER nor RESEND_API_KEY configured. Subject: "${subject}", To:`, to);
+}
 
 /**
  * Send Email Alert to all registered NGOs when a new donation is listed
@@ -47,18 +104,11 @@ async function sendDonationCreatedAlert(donation, restaurant) {
       </div>
     `;
 
-    if (resend) {
-      console.log(`📧 Sending Resend email to ${ngoEmails.length} NGO(s)...`);
-      const data = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: ngoEmails,
-        subject: `🍽️ New Food Donation Alert: ${donation.food_name}`,
-        html: htmlContent
-      });
-      console.log('✅ Resend NGO Email Sent Successfully:', data.id);
-    } else {
-      console.log(`ℹ️ [Email Simulation] RESEND_API_KEY not configured. Alert for "${donation.food_name}" target emails:`, ngoEmails);
-    }
+    await sendEmail({
+      to: ngoEmails,
+      subject: `🍽️ New Food Donation Alert: ${donation.food_name}`,
+      html: htmlContent
+    });
   } catch (err) {
     console.error('❌ Failed to send Donation Created Email:', err.message);
   }
@@ -69,7 +119,6 @@ async function sendDonationCreatedAlert(donation, restaurant) {
  */
 async function sendDonationAcceptedAlert({ donation, ngo, restaurant, volunteer, pickupOtp }) {
   try {
-    // Fetch volunteer email(s)
     let recipientEmails = [];
 
     if (volunteer && volunteer.email) {
@@ -119,18 +168,11 @@ async function sendDonationAcceptedAlert({ donation, ngo, restaurant, volunteer,
       </div>
     `;
 
-    if (resend) {
-      console.log(`📧 Sending Resend delivery alert to volunteer(s):`, recipientEmails);
-      const data = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: recipientEmails,
-        subject: `🚚 Food Delivery Assignment: ${donation.food_name}`,
-        html: htmlContent
-      });
-      console.log('✅ Resend Volunteer Email Sent Successfully:', data.id);
-    } else {
-      console.log(`ℹ️ [Email Simulation] RESEND_API_KEY not set. Delivery Alert for "${donation.food_name}" target emails:`, recipientEmails);
-    }
+    await sendEmail({
+      to: recipientEmails,
+      subject: `🚚 Food Delivery Assignment: ${donation.food_name}`,
+      html: htmlContent
+    });
   } catch (err) {
     console.error('❌ Failed to send Volunteer Delivery Email:', err.message);
   }
