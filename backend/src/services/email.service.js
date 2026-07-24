@@ -34,14 +34,40 @@ async function sendEmail({ to, subject, html }) {
   if (smtpTransporter) {
     const recipients = Array.isArray(to) ? to.join(', ') : to;
     console.log(`📧 Sending Nodemailer SMTP email via (${smtpUser}) to: ${recipients}`);
-    const info = await smtpTransporter.sendMail({
-      from: fromEmail,
-      to: recipients,
-      subject,
-      html
-    });
-    console.log('✅ Nodemailer Email Sent Successfully! MessageId:', info.messageId);
-    return info;
+    try {
+      const info = await smtpTransporter.sendMail({
+        from: fromEmail,
+        to: recipients,
+        subject,
+        html
+      });
+      console.log('✅ Nodemailer Email Sent Successfully! MessageId:', info.messageId);
+      return info;
+    } catch (primaryErr) {
+      console.warn('⚠️ Primary SMTP attempt failed:', primaryErr.message, '. Retrying with fallback port 587 STARTTLS...');
+      try {
+        const fallbackTransporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: {
+            user: smtpUser.trim(),
+            pass: process.env.SMTP_PASS.trim().replace(/\s+/g, '')
+          },
+          tls: { rejectUnauthorized: false }
+        });
+        const info = await fallbackTransporter.sendMail({
+          from: fromEmail,
+          to: recipients,
+          subject,
+          html
+        });
+        console.log('✅ Nodemailer Email Sent via Fallback Port 587! MessageId:', info.messageId);
+        return info;
+      } catch (fallbackErr) {
+        console.error('❌ Both Nodemailer SMTP attempts failed:', fallbackErr.message);
+      }
+    }
   }
 
   // Option 2: Resend API Fallback
