@@ -19,7 +19,13 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:3000'],
+  origin: (origin, callback) => {
+    // Allow requests from Vercel, localhost, or FRONTEND_URL
+    if (!origin || origin.includes('vercel.app') || origin.includes('localhost') || origin === process.env.FRONTEND_URL) {
+      return callback(null, true);
+    }
+    callback(null, true);
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
