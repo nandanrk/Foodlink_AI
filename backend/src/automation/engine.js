@@ -55,40 +55,35 @@ async function processDonation(donationId) {
 
     // Find nearby NGOs
     console.log('🗺️ Finding nearby NGOs...');
-    const nearbyNGOs = await mapsService.findNearbyNGOs(
-      supabaseAdmin,
-      donation.latitude,
-      donation.longitude
-    );
-
-    if (!nearbyNGOs || nearbyNGOs.length === 0) {
-      console.warn('No nearby NGOs found for donation', donationId);
-      await notificationService.createNotification({
-        recipient_type: 'restaurant',
-        recipient_id: donation.restaurant_id,
-        title: 'Donation Listed',
-        message: `Your donation "${donation.food_name}" is listed and visible to NGOs for acceptance.`
-      });
-      return;
+    let nearbyNGOs = [];
+    try {
+      nearbyNGOs = await mapsService.findNearbyNGOs(
+        supabaseAdmin,
+        donation.latitude,
+        donation.longitude
+      );
+    } catch (mapErr) {
+      console.warn('Map location check error:', mapErr.message);
     }
 
-    // Notify nearest NGO
-    const nearestNGO = nearbyNGOs[0];
-    console.log(`📧 Notifying NGO: ${nearestNGO.name}`);
+    if (nearbyNGOs && nearbyNGOs.length > 0) {
+      const nearestNGO = nearbyNGOs[0];
+      console.log(`📧 Notifying nearest NGO in-app: ${nearestNGO.name}`);
 
-    await notificationService.createNotification({
-      recipient_type: 'ngo',
-      recipient_id: nearestNGO.id,
-      title: 'New Food Donation Available 🍽️',
-      message: `${donation.restaurants?.name || 'A restaurant'} has donated ${donation.food_name} (${donation.servings} servings). Please accept it from your Browse tab.`
-    });
+      await notificationService.createNotification({
+        recipient_type: 'ngo',
+        recipient_id: nearestNGO.id,
+        title: 'New Food Donation Available 🍽️',
+        message: `${donation.restaurants?.name || 'A restaurant'} has donated ${donation.food_name} (${donation.servings} servings). Please accept it from your Browse tab.`
+      });
 
-    await supabaseAdmin
-      .from('donations')
-      .update({ notified_ngo_id: nearestNGO.id, status: 'pending' })
-      .eq('id', donationId);
+      await supabaseAdmin
+        .from('donations')
+        .update({ notified_ngo_id: nearestNGO.id, status: 'pending' })
+        .eq('id', donationId);
+    }
 
-    // Dispatch email alert via Cloud Email Service
+    // ALWAYS Dispatch email alert to all registered NGOs via Cloud Email Service
     const emailService = require('../services/email.service');
     await emailService.sendDonationCreatedAlert(donation, donation.restaurants);
 
