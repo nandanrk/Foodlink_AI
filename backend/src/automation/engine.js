@@ -33,27 +33,11 @@ async function processDonation(donationId) {
       return;
     }
 
-    // Generate AI food description & shelf life guidance
-    console.log('🤖 Generating AI food description...');
-    let aiDescription = 'Freshly prepared food donation.';
-    let shelfLife = 'Consume within safe timeframe.';
-    try {
-      aiDescription = await aiService.generateFoodDescription(donation);
-      shelfLife = await aiService.generateShelfLifeGuidance(donation);
-    } catch (e) {
-      console.error('AI generation warning:', e.message);
-    }
+    // 1. Dispatch email alert to all registered NGOs IMMEDIATELY via Cloud Email Service
+    const emailService = require('../services/email.service');
+    await emailService.sendDonationCreatedAlert(donation, donation.restaurants);
 
-    await supabaseAdmin
-      .from('donations')
-      .update({
-        ai_description: aiDescription,
-        shelf_life_guidance: shelfLife,
-        status: 'pending'
-      })
-      .eq('id', donationId);
-
-    // Find nearby NGOs
+    // 2. Find nearby NGOs for in-app notification
     console.log('🗺️ Finding nearby NGOs...');
     let nearbyNGOs = [];
     try {
@@ -83,11 +67,23 @@ async function processDonation(donationId) {
         .eq('id', donationId);
     }
 
-    // ALWAYS Dispatch email alert to all registered NGOs via Cloud Email Service
-    const emailService = require('../services/email.service');
-    await emailService.sendDonationCreatedAlert(donation, donation.restaurants);
+    // 3. Generate AI food description & shelf life guidance in background (non-blocking)
+    if (process.env.OPENROUTER_API_KEY) {
+      (async () => {
+        try {
+          const aiDescription = await aiService.generateFoodDescription(donation);
+          const shelfLife = await aiService.generateShelfLifeGuidance(donation);
+          await supabaseAdmin
+            .from('donations')
+            .update({ ai_description: aiDescription, shelf_life_guidance: shelfLife })
+            .eq('id', donationId);
+        } catch (e) {
+          console.warn('Background AI generation warning:', e.message);
+        }
+      })();
+    }
 
-    // Also trigger n8n Webhook if configured (safeguarded so n8n errors never block emails)
+    // 4. Also trigger n8n Webhook if configured (safeguarded)
     if (process.env.N8N_DONATION_CREATED_WEBHOOK_URL) {
       try {
         const n8nService = require('../services/n8n.service');
