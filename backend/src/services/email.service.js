@@ -209,6 +209,7 @@ async function sendDonationAcceptedAlert({ donation, ngo, restaurant, volunteer,
 }
 
 module.exports = {
+  sendEmail,
   sendDonationCreatedAlert,
   sendDonationAcceptedAlert
 };
