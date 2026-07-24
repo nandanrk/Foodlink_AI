@@ -88,17 +88,14 @@ async function processDonation(donationId) {
       .update({ notified_ngo_id: nearestNGO.id, status: 'pending' })
       .eq('id', donationId);
 
-    // Dispatch email alert based on EMAIL_PROVIDER setting ('resend', 'n8n', or 'both')
-    const provider = (process.env.EMAIL_PROVIDER || 'resend').toLowerCase();
-    
-    if (provider === 'n8n' || provider === 'both') {
+    // Dispatch email alert via Cloud Email Service
+    const emailService = require('../services/email.service');
+    await emailService.sendDonationCreatedAlert(donation, donation.restaurants);
+
+    // Also trigger n8n Webhook if configured
+    if (process.env.N8N_DONATION_CREATED_WEBHOOK_URL) {
       const n8nService = require('../services/n8n.service');
       await n8nService.triggerDonationCreatedWebhook(donation, donation.restaurants);
-    }
-    
-    if (provider === 'resend' || provider === 'both') {
-      const emailService = require('../services/email.service');
-      await emailService.sendDonationCreatedAlert(donation, donation.restaurants);
     }
 
     console.log(`✅ Donation ${donationId} processed successfully`);
@@ -193,22 +190,18 @@ async function assignVolunteer(donationId, ngoId) {
       const { data: ngo } = await supabaseAdmin.from('ngos').select('*').eq('id', ngoId).single();
       const { data: restaurant } = await supabaseAdmin.from('restaurants').select('*').eq('id', donation.restaurant_id).single();
       
-      const provider = (process.env.EMAIL_PROVIDER || 'resend').toLowerCase();
+      const emailService = require('../services/email.service');
+      await emailService.sendDonationAcceptedAlert({
+        donation,
+        ngo,
+        restaurant,
+        volunteer,
+        pickupOtp
+      });
 
-      if (provider === 'n8n' || provider === 'both') {
+      if (process.env.N8N_DONATION_ACCEPTED_WEBHOOK_URL) {
         const n8nService = require('../services/n8n.service');
         await n8nService.triggerDonationAcceptedWebhook({
-          donation,
-          ngo,
-          restaurant,
-          volunteer,
-          pickupOtp
-        });
-      }
-
-      if (provider === 'resend' || provider === 'both') {
-        const emailService = require('../services/email.service');
-        await emailService.sendDonationAcceptedAlert({
           donation,
           ngo,
           restaurant,
