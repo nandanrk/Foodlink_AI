@@ -13,7 +13,7 @@ const schema = z.object({
   email: z.string().email('Invalid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  role: z.enum(['restaurant', 'ngo', 'volunteer'], { errorMap: () => ({ message: 'Select a role' }) }),
+  role: z.enum(['restaurant', 'ngo', 'volunteer'], { message: 'Select a role' }),
 }).refine(d => d.password === d.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] });
 
 type FormData = z.infer<typeof schema>;

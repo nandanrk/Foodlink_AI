@@ -35,14 +35,14 @@ export default function Certificates() {
                   <Award className="w-6 h-6 text-yellow-400" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white">{cert.donation?.food_name || 'Donation Certificate'}</h3>
-                  <p className="text-slate-400 text-sm">Certificate #{cert.certificate_number}</p>
-                  <p className="text-slate-500 text-xs mt-1">{formatDateTime(cert.issued_at)}</p>
+                  <h3 className="font-bold text-white">{cert.donations?.food_name || 'Donation Certificate'}</h3>
+                  <p className="text-slate-400 text-sm">Certificate #{cert.certificate_id}</p>
+                  <p className="text-slate-500 text-xs mt-1">{formatDateTime(cert.generated_at)}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                {cert.pdf_url && (
-                  <a href={cert.pdf_url} target="_blank" rel="noopener noreferrer"
+                {cert.certificate_url && (
+                  <a href={cert.certificate_url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/20 transition-all">
                     <Download className="w-4 h-4" /> Download PDF
                   </a>

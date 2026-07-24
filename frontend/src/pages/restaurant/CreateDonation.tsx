@@ -14,7 +14,7 @@ const schema = z.object({
   description: z.string().optional(),
   quantity: z.string().min(1, 'Quantity required'),
   servings: z.string().min(1, 'Servings required'),
-  food_type: z.enum(['vegetarian', 'non-vegetarian', 'vegan', 'mixed'], { errorMap: () => ({ message: 'Select food type' }) }),
+  food_type: z.enum(['vegetarian', 'non-vegetarian', 'vegan', 'mixed'], { message: 'Select food type' }),
   cooked_time: z.string().min(1, 'Cooked time required'),
   expiry_time: z.string().min(1, 'Expiry time required'),
   pickup_address: z.string().min(5, 'Pickup address required'),
