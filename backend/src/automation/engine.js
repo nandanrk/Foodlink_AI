@@ -113,19 +113,24 @@ async function assignVolunteer(donationId, ngoId) {
     if (!donation) return null;
 
     // Find nearby volunteers
-    const nearbyVolunteers = await mapsService.findNearbyVolunteers(
-      supabaseAdmin,
-      donation.latitude,
-      donation.longitude
-    );
+    let nearbyVolunteers = [];
+    try {
+      nearbyVolunteers = await mapsService.findNearbyVolunteers(
+        supabaseAdmin,
+        donation.latitude,
+        donation.longitude
+      );
+    } catch (vErr) {
+      console.warn('Volunteer search error:', vErr.message);
+    }
 
     if (!nearbyVolunteers || nearbyVolunteers.length === 0) {
-      await notificationService.createNotification({
-        recipient_type: 'ngo',
-        recipient_id: ngoId,
-        title: 'Donation Accepted',
-        message: `You accepted "${donation.food_name}". We are searching for an available volunteer.`
-      });
+      const { data: allVols } = await supabaseAdmin.from('volunteers').select('*');
+      nearbyVolunteers = allVols || [];
+    }
+
+    if (!nearbyVolunteers || nearbyVolunteers.length === 0) {
+      console.warn('No registered volunteers found in database.');
       return null;
     }
 
