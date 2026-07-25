@@ -53,10 +53,13 @@ exports.createDonation = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    // Trigger automation pipeline in background so email dispatches without delaying HTTP response
-    processDonation(donation.id).catch(autoErr => console.error('Automation engine processing error:', autoErr));
+    // Await processDonation to guarantee Render cloud container delivers emails before HTTP 201 response
+    try {
+      await processDonation(donation.id);
+    } catch (autoErr) {
+      console.error('Automation engine processing error:', autoErr);
+    }
 
-    // Respond immediately in 50ms so UI shows Green Success
     res.status(201).json({ message: 'Donation created successfully', donation });
   } catch (err) {
     console.error('Create donation error:', err);
