@@ -154,80 +154,65 @@ async function sendDonationCreatedAlert(donation, restaurant) {
  */
 async function sendDonationAcceptedAlert({ donation, ngo, restaurant, volunteer, pickupOtp }) {
   try {
-    // 1. Send Volunteer Delivery Email
-    const volunteerEmails = volunteer?.email ? [volunteer.email] : [];
-    if (volunteerEmails.length > 0) {
-      const volunteerHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #2563eb; margin-top: 0;">🚚 Food Delivery Assignment Alert</h2>
-          <p>Hello ${volunteer?.name || 'Volunteer Partner'},</p>
-          <p>You have been assigned to pick up a food donation and deliver it to an NGO!</p>
+    let recipientEmails = [];
 
-          <h3 style="color: #0f172a; margin-bottom: 5px;">📍 Pickup Location (Restaurant):</h3>
-          <div style="background-color: #f1f5f9; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-            <p style="margin: 3px 0;"><strong>Restaurant:</strong> ${restaurant?.name || 'Restaurant Donor'}</p>
-            <p style="margin: 3px 0;"><strong>Address:</strong> ${restaurant?.address || donation?.pickup_address || 'N/A'}</p>
-          </div>
-
-          <h3 style="color: #0f172a; margin-bottom: 5px;">🏢 Delivery Destination (NGO):</h3>
-          <div style="background-color: #f1f5f9; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-            <p style="margin: 3px 0;"><strong>NGO Name:</strong> ${ngo?.name || 'NGO Partner'}</p>
-            <p style="margin: 3px 0;"><strong>Address:</strong> ${ngo?.address || 'N/A'}</p>
-          </div>
-
-          <h3 style="color: #0f172a; margin-bottom: 5px;">📦 Food & OTP:</h3>
-          <div style="background-color: #e0f2fe; padding: 12px; border-radius: 6px;">
-            <p style="margin: 3px 0;"><strong>Food Item:</strong> ${donation.food_name}</p>
-            <p style="margin: 3px 0;"><strong>Servings:</strong> ${donation.servings} meals</p>
-            <p style="margin: 3px 0; font-size: 16px;"><strong>Pickup OTP:</strong> <span style="background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold;">${pickupOtp || 'N/A'}</span></p>
-          </div>
-
-          <p style="margin-top: 20px;">Please coordinate the pickup promptly. Thank you for fighting food waste!</p>
-          <hr style="border: none; border-top: 1px solid #eeeeee; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #64748b;">FoodLink AI Automated Logistics Engine</p>
-        </div>
-      `;
-
-      await Promise.allSettled(
-        volunteerEmails.map(email =>
-          sendEmail({
-            to: email,
-            subject: `🚚 [Volunteer Assignment] ${donation.food_name} - OTP: ${pickupOtp}`,
-            html: volunteerHtml
-          })
-        )
-      );
+    if (volunteer && volunteer.email) {
+      recipientEmails.push(volunteer.email);
+    } else {
+      const { data: volunteers } = await supabaseAdmin
+        .from('volunteers')
+        .select('email');
+      recipientEmails = (volunteers || []).map(v => v.email).filter(Boolean);
     }
 
-    // 2. Also send confirmation emails to NGO and Restaurant
-    const confirmationEmails = [ngo?.email, restaurant?.email].filter(Boolean);
-    if (confirmationEmails.length > 0) {
-      const confirmHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #16a34a; margin-top: 0;">✅ Donation Accepted & Volunteer Assigned</h2>
-          <p>Hello,</p>
-          <p>Donation <strong>"${donation.food_name}"</strong> has been accepted by <strong>${ngo?.name || 'NGO'}</strong>!</p>
-          
-          <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 15px 0;">
-            <p style="margin: 3px 0;"><strong>Assigned Volunteer:</strong> ${volunteer?.name || 'Volunteer Partner'}</p>
-            <p style="margin: 3px 0;"><strong>Food Item:</strong> ${donation.food_name} (${donation.servings} servings)</p>
-            <p style="margin: 3px 0; font-size: 16px;"><strong>Pickup OTP:</strong> <span style="background: #16a34a; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold;">${pickupOtp || 'N/A'}</span></p>
-          </div>
-
-          <p style="font-size: 12px; color: #64748b;">FoodLink AI Automated System</p>
-        </div>
-      `;
-
-      await Promise.allSettled(
-        confirmationEmails.map(email =>
-          sendEmail({
-            to: email,
-            subject: `✅ [Donation Accepted] ${donation.food_name} - Assigned to ${volunteer?.name || 'Volunteer'}`,
-            html: confirmHtml
-          })
-        )
-      );
+    if (recipientEmails.length === 0) {
+      console.log('ℹ️ No volunteer emails found for delivery notification.');
+      return;
     }
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #2563eb; margin-top: 0;">🚚 Food Delivery Assignment Alert</h2>
+        <p>Hello ${volunteer?.name || 'Volunteer Delivery Partner'},</p>
+        <p>A food donation has been accepted by an NGO and requires delivery!</p>
+
+        <h3 style="color: #0f172a; margin-bottom: 5px;">📍 Pickup Details (Donor Restaurant):</h3>
+        <div style="background-color: #f1f5f9; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+          <p style="margin: 3px 0;"><strong>Restaurant:</strong> ${restaurant?.name || 'Restaurant Donor'}</p>
+          <p style="margin: 3px 0;"><strong>Address:</strong> ${restaurant?.address || donation?.pickup_address || 'N/A'}</p>
+          <p style="margin: 3px 0;"><strong>Phone:</strong> ${restaurant?.phone || 'N/A'}</p>
+        </div>
+
+        <h3 style="color: #0f172a; margin-bottom: 5px;">🏢 Delivery Destination (NGO):</h3>
+        <div style="background-color: #f1f5f9; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+          <p style="margin: 3px 0;"><strong>NGO Name:</strong> ${ngo?.name || 'NGO Partner'}</p>
+          <p style="margin: 3px 0;"><strong>Address:</strong> ${ngo?.address || 'N/A'}</p>
+          <p style="margin: 3px 0;"><strong>Phone:</strong> ${ngo?.phone || 'N/A'}</p>
+        </div>
+
+        <h3 style="color: #0f172a; margin-bottom: 5px;">📦 Food Summary:</h3>
+        <div style="background-color: #e0f2fe; padding: 12px; border-radius: 6px;">
+          <p style="margin: 3px 0;"><strong>Food Item:</strong> ${donation.food_name}</p>
+          <p style="margin: 3px 0;"><strong>Servings:</strong> ${donation.servings} meals</p>
+          <p style="margin: 3px 0; font-size: 16px;"><strong>Pickup OTP:</strong> <span style="background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold;">${pickupOtp || 'N/A'}</span></p>
+        </div>
+
+        <p style="margin-top: 20px;">Please coordinate the pickup and delivery promptly. Thank you for fighting food waste!</p>
+        <hr style="border: none; border-top: 1px solid #eeeeee; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #64748b;">FoodLink AI Automated Logistics Engine</p>
+      </div>
+    `;
+
+    // Send individual emails to each volunteer recipient
+    await Promise.allSettled(
+      recipientEmails.map(email =>
+        sendEmail({
+          to: email,
+          subject: `🚚 Food Delivery Assignment: ${donation.food_name}`,
+          html: htmlContent
+        })
+      )
+    );
   } catch (err) {
     console.error('❌ Failed to send Volunteer Delivery Email:', err.message);
   }

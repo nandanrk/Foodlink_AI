@@ -47,18 +47,12 @@ async function findNearbyNGOs(supabaseAdmin, lat, lon, radiusKm = 50) {
  * Find available volunteers near a location, sorted by distance
  */
 async function findNearbyVolunteers(supabaseAdmin, lat, lon, radiusKm = 30) {
-  let { data: volunteers, error } = await supabaseAdmin
+  const { data: volunteers, error } = await supabaseAdmin
     .from('volunteers')
     .select('*')
     .eq('availability', true);
 
-  if (error || !volunteers || volunteers.length === 0) {
-    const { data: allVolunteers } = await supabaseAdmin
-      .from('volunteers')
-      .select('*');
-    volunteers = allVolunteers || [];
-  }
-
+  if (error) throw error;
   if (!volunteers || volunteers.length === 0) return [];
 
   if (!lat || !lon) {
