@@ -72,7 +72,13 @@ export default function CreateDonation() {
         const uploadRes = await donationAPI.uploadImage(imageFile);
         imageUrl = uploadRes.data.url;
       }
-      await donationAPI.create({ ...data, image_url: imageUrl || undefined });
+      const formattedData = {
+        ...data,
+        cooked_time: data.cooked_time ? new Date(data.cooked_time).toISOString() : new Date().toISOString(),
+        expiry_time: data.expiry_time ? new Date(data.expiry_time).toISOString() : new Date(Date.now() + 86400000).toISOString(),
+        image_url: imageUrl || undefined
+      };
+      await donationAPI.create(formattedData);
       setSuccess(true);
       setTimeout(() => navigate('/restaurant/history'), 2000);
     } catch (err: any) {

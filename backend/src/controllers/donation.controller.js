@@ -35,12 +35,15 @@ exports.createDonation = async (req, res) => {
         }, { onConflict: 'id' });
     }
 
+    const cookedISO = cooked_time ? new Date(cooked_time).toISOString() : new Date().toISOString();
+    const expiryISO = expiry_time ? new Date(expiry_time).toISOString() : new Date(Date.now() + 86400000).toISOString();
+
     const { data: donation, error } = await supabaseAdmin
       .from('donations')
       .insert({
         restaurant_id: req.userId,
-        food_name, description, quantity, servings: parseInt(servings),
-        food_type, cooked_time, expiry_time, pickup_address,
+        food_name, description: description || '', quantity, servings: parseInt(servings),
+        food_type, cooked_time: cookedISO, expiry_time: expiryISO, pickup_address,
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
         image_url, status: 'pending'
